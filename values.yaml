@@ -1,0 +1,18 @@
+workflow:
+  namespace: argo
+
+jobs:
+  - mainApplicationFile: wordcount.py
+    inputFilePath: /opt/bitnami/spark/work-dir/input.txt
+    driverMemory: 512m
+  - mainApplicationFile: wordcount.py
+    inputFilePath: /opt/bitnami/spark/work-dir/input2.txt
+    driverMemory: 1g
+
+sparkApplication:
+  namespace: spark
+  image: my-spark-app:latest
+  mainApplicationFile: wordcount.py
+  sparkVersion: 3.0.0
+  inputFilePath: "{{inputs.parameters.inputFilePath}}"
+  driverMemory: 512m

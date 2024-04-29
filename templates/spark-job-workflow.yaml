@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: dynamic-spark-job-with-helm
+  namespace: {{ .Values.workflow.namespace }}
+spec:
+  entrypoint: run-spark-jobs
+  templates:
+    - name: run-spark-jobs
+      dag:
+        tasks:
+          {{- range $index, $job := .Values.jobs }}
+          - name: submit-spark-job-{{ $index }}
+            template: submit-job
+            arguments:
+              parameters:
+                - name: mainApplicationFile
+                  value: "{{ $job.mainApplicationFile }}"
+                - name: inputFilePath
+                  value: "{{ $job.inputFilePath }}"
+                - name: driverMemory
+                  value: "{{ $job.driverMemory }}"
+          {{- end }}
+
+    - name: submit-job
+      inputs:
+        parameters:
+          - name: mainApplicationFile
+          - name: inputFilePath
+          - name: driverMemory
+      resource:
+        action: create
+        successCondition: status.applicationState.state == COMPLETED
+        failureCondition: status.applicationState.state == FAILED
+        manifest: |
+          apiVersion: "sparkoperator.k8s.io/v1beta2"
+          kind: SparkApplication
+          metadata:
+            generateName: spark-job-
+            namespace: {{ .Values.sparkApplication.namespace }}
+          spec:
+            type: Python
+            pythonVersion: "3"
+            mode: cluster
+            image: "{{ .Values.sparkApplication.image }}"
+            mainApplicationFile: "local:///opt/bitnami/spark/work-dir/{{ .Values.sparkApplication.mainApplicationFile }}"
+            sparkVersion: "3.0.0"
+            arguments:
+              - "--input_file"
+              - "{{ .Values.sparkApplication.inputFilePath }}"
+            driver:
+              cores: 1
+              memory: "{{ .Values.sparkApplication.driverMemory }}"  # Dynamically set the driver memory
+              labels:
+                version: 3.0.0
+            executor:
+              cores: 1
+              instances: 1
+              memory: "512m"
+              deleteOnTermination: false
+              labels:
+                version: 3.0.0
