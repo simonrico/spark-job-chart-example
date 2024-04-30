@@ -1,8 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
   name: {{ .Release.Name }}
-  namespace: {{ .Values.workflow.namespace }}
 spec:
   entrypoint: run-spark-jobs
   templates:
